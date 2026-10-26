@@ -24,6 +24,8 @@ st.set_page_config(
 
 # Paths
 BASE_DIR = Path(__file__).resolve().parent
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
 DATA_PROCESSED_DIR = BASE_DIR / "data" / "processed"
 PRED_PATH = DATA_PROCESSED_DIR / "test_predictions.parquet"
 FEAT_PATH = DATA_PROCESSED_DIR / "PJME_features.parquet"
