@@ -1,9 +1,9 @@
-# UMC301 Master Project Portfolio & Viva Defense: Complete Discussion Transcript
+# UMC301 Project 1: Energy Grid Forecasting & Portfolio Strategy: Discussion Transcript
 **Course:** Applied Data Science and Artificial Intelligence (UMC301)  
 **Institution:** Indian Institute of Science (IISc), Computational and Data Sciences (CDS)  
 **Instructor:** Prof. Deepak Subramani  
-**Student:** Akshat  
-**Total Turns:** 28 Turns (Part I: Turns 1–10 CLI Session | Part II: Turns 11–28 Web/IDE Session)  
+**Student:** Akshaya  
+**Total Turns:** 28 Turns (Part I: Turns 1–10 CLI Foundations | Part II: Turns 11–28 Web/IDE Strategy & Multi-Project Portfolio)  
 **Interactive Standalone HTML:** [`transcript.html`](./transcript.html)  
 
 ---
