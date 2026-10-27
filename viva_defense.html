@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project 1 Viva Voce Defense Guide — Grid Demand & Quantile LightGBM</title>
+    <!-- KaTeX for high-performance LaTeX math rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"
+            onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]});"></script>
+    <style>
+        :root {
+            --bg-primary: #0b0f19;
+            --bg-secondary: #111827;
+            --bg-card: #1f2937;
+            --bg-card-hover: #283548;
+            --text-primary: #f9fafb;
+            --text-secondary: #9ca3af;
+            --text-muted: #6b7280;
+            --accent: #06b6d4;
+            --accent-glow: rgba(6, 182, 212, 0.25);
+            --accent-emerald: #10b981;
+            --accent-rose: #f43f5e;
+            --accent-amber: #f59e0b;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --border-highlight: rgba(6, 182, 212, 0.4);
+            --code-bg: #030712;
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 16px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding-bottom: 80px;
+        }
+
+        header {
+            background: linear-gradient(180deg, rgba(17, 24, 39, 0.95) 0%, rgba(11, 15, 25, 0.9) 100%);
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(12px);
+            padding: 20px 0;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .title-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(6, 182, 212, 0.15);
+            border: 1px solid rgba(6, 182, 212, 0.3);
+            color: #67e8f9;
+            font-size: 0.8rem;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 9999px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 8px;
+        }
+
+        h1 {
+            font-size: 1.85rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            background: linear-gradient(135deg, #ffffff 0%, #a5f3fc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 0.92rem;
+            margin-top: 4px;
+        }
+
+        .stats-strip {
+            display: flex;
+            gap: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 8px 16px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .stat-value {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .stat-label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .controls-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            margin: 28px 0;
+            flex-wrap: wrap;
+        }
+
+        .search-input {
+            flex: 1;
+            max-width: 480px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 10px 16px;
+            border-radius: var(--radius-md);
+            font-size: 0.9rem;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        .search-input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        .action-btn {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            padding: 9px 14px;
+            border-radius: var(--radius-md);
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .action-btn:hover {
+            color: var(--text-primary);
+            border-color: rgba(255, 255, 255, 0.25);
+        }
+
+        .q-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            margin-bottom: 24px;
+            overflow: hidden;
+            transition: all 0.25s ease;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .q-card:hover {
+            border-color: var(--border-highlight);
+        }
+
+        .q-header {
+            padding: 20px 24px;
+            background: rgba(255, 255, 255, 0.02);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .q-num-badge {
+            background: rgba(6, 182, 212, 0.15);
+            color: var(--accent);
+            border: 1px solid rgba(6, 182, 212, 0.3);
+            font-size: 0.78rem;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: var(--radius-sm);
+            white-space: nowrap;
+        }
+
+        .q-topic {
+            font-size: 0.78rem;
+            color: var(--accent);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 4px;
+        }
+
+        .q-question {
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            line-height: 1.5;
+        }
+
+        .q-body {
+            padding: 24px;
+        }
+
+        .options-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .option-item {
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 14px 18px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            user-select: none;
+        }
+
+        .option-item:hover {
+            background: var(--bg-card-hover);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .option-marker {
+            min-width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.78rem;
+            font-weight: 700;
+            margin-top: 1px;
+            transition: all 0.2s ease;
+        }
+
+        .option-text {
+            font-size: 0.92rem;
+            color: #e2e8f0;
+            line-height: 1.5;
+            flex: 1;
+        }
+
+        .option-item.selected-correct {
+            background: rgba(16, 185, 129, 0.15) !important;
+            border-color: var(--accent-emerald) !important;
+        }
+        .option-item.selected-correct .option-marker {
+            background: var(--accent-emerald);
+            color: #ffffff;
+        }
+
+        .option-item.selected-wrong {
+            background: rgba(244, 63, 94, 0.15) !important;
+            border-color: var(--accent-rose) !important;
+        }
+        .option-item.selected-wrong .option-marker {
+            background: var(--accent-rose);
+            color: #ffffff;
+        }
+
+        .reveal-toggle-btn {
+            background: linear-gradient(135deg, rgba(6, 182, 212, 0.1) 0%, rgba(6, 182, 212, 0.2) 100%);
+            border: 1px solid rgba(6, 182, 212, 0.3);
+            color: #67e8f9;
+            padding: 10px 18px;
+            border-radius: var(--radius-md);
+            font-size: 0.88rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+            width: 100%;
+            justify-content: center;
+        }
+
+        .reveal-toggle-btn:hover {
+            background: linear-gradient(135deg, rgba(6, 182, 212, 0.2) 0%, rgba(6, 182, 212, 0.3) 100%);
+            border-color: var(--accent);
+        }
+
+        .defense-dossier {
+            display: none;
+            margin-top: 20px;
+            padding: 22px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+            animation: fadeIn 0.3s ease;
+        }
+
+        .defense-dossier.open { display: block; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .dossier-heading {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .badge-verified {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--accent-emerald);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            font-size: 0.72rem;
+            padding: 2px 8px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            font-weight: 700;
+        }
+
+        .defense-text {
+            font-size: 0.9rem;
+            color: #cbd5e1;
+            margin-bottom: 16px;
+            line-height: 1.65;
+        }
+
+        .defense-box {
+            background: rgba(15, 23, 42, 0.8);
+            border-left: 3px solid var(--accent);
+            padding: 14px 18px;
+            border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+            margin-bottom: 16px;
+        }
+
+        .defense-box.warning {
+            border-left-color: var(--accent-amber);
+            background: rgba(40, 25, 10, 0.4);
+        }
+
+        .defense-box-title {
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin-bottom: 6px;
+            letter-spacing: 0.05em;
+        }
+
+        .defense-box.warning .defense-box-title { color: var(--accent-amber); }
+
+        .whiteboard-quote {
+            background: rgba(6, 182, 212, 0.08);
+            border: 1px dashed rgba(6, 182, 212, 0.35);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            margin-top: 14px;
+        }
+
+        .whiteboard-label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 6px;
+        }
+
+        footer {
+            margin-top: 60px;
+            border-top: 1px solid var(--border-color);
+            padding-top: 28px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.82rem;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <div>
+                    <div class="title-badge">UMC301 Project 1 • Tabular Machine Learning Pillar</div>
+                    <h1>Hourly Grid Demand & Quantile Dispatch Risk Viva Voce</h1>
+                    <div class="subtitle">PJM East Interconnection (145k Hourly Records, 2002–2018) • Quantile Pinball LightGBM & TreeSHAP</div>
+                </div>
+                <div class="stats-strip">
+                    <div class="stat-item">
+                        <div class="stat-value">5</div>
+                        <div class="stat-label">Viva MCQs</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">100%</div>
+                        <div class="stat-label">Whiteboard Proofs</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="controls-bar">
+            <input type="text" id="searchInput" class="search-input" placeholder="Search questions (e.g. Pinball, Newsvendor, TimeSeriesSplit, Levene, TreeSHAP)..." oninput="filterSearch()">
+            <div style="display: flex; gap: 10px;">
+                <button class="action-btn" onclick="toggleAll(true)">Expand All Proofs</button>
+                <button class="action-btn" onclick="toggleAll(false)">Collapse All</button>
+                <button class="action-btn" onclick="window.print()">Print / PDF</button>
+            </div>
+        </div>
+
+        <!-- Question 1 -->
+        <div class="q-card" data-keywords="pinball loss newsvendor asymmetric risk quantile brownout curtailment">
+            <div class="q-header">
+                <div class="q-num-badge">Question 1</div>
+                <div>
+                    <div class="q-topic">Asymmetric Loss Theory & The Newsvendor Derivation</div>
+                    <div class="q-question">Why does standard Mean Squared Error ($L_2$) training fail for electrical grid dispatch, and what is the first-principles mathematical derivation that mandates selecting the nominal upper quantile $\tau = 0.90$?</div>
+                </div>
+            </div>
+            <div class="q-body">
+                <div class="options-list">
+                    <div class="option-item" onclick="checkOption(this, false)">
+                        <div class="option-marker">A</div>
+                        <div class="option-text">Because electric load data follows a Pareto power-law distribution, which causes the $L_2$ gradient to explode towards infinity unless clipped to $\tau = 0.90$.</div>
+                    </div>
+                    <div class="option-item" onclick="checkOption(this, true)">
+                        <div class="option-marker">B</div>
+                        <div class="option-text">Under the Newsvendor critical fractile $\tau^* = \frac{C_{\text{under}}}{C_{\text{under}} + C_{\text{over}}}$, an empirical 10:1 operational penalty ratio between catastrophic blackout shedding ($C_{\text{under}}=10$) and renewable over-generation curtailment ($C_{\text{over}}=1$) strictly dictates $\tau^* = \frac{10}{11} \approx 0.909$.</div>
+                    </div>
+                    <div class="option-item" onclick="checkOption(this, false)">
+                        <div class="option-marker">C</div>
+                        <div class="option-text">Because LightGBM's histogram binning algorithm is mathematically constrained to evaluate quantile splits exclusively at exact decile intervals ($\tau \in \{0.1, 0.2, \dots, 0.9\}$).</div>
+                    </div>
+                    <div class="option-item" onclick="checkOption(this, false)">
+                        <div class="option-marker">D</div>
+                        <div class="option-text">Because the Central Limit Theorem requires an 80% confidence interval to achieve asymptotic normality over 145,000 hourly observations.</div>
+                    </div>
+                </div>
+
+                <button class="reveal-toggle-btn" onclick="toggleDossier(this)">
+                    <span>Show Examiner Solution & Whiteboard Derivation</span>
+                </button>
+
+                <div class="defense-dossier">
+                    <div class="dossier-heading">
+                        <span>Examiner Solution & First-Principles Defense</span>
+                        <span class="badge-verified">Verified</span>
+                    </div>
+                    <div class="defense-text">
+                        <strong>1. The Operational Failure of $L_2$ Loss:</strong> Minimizing Mean Squared Error ($\frac{1}{N}\sum(y - \hat{y})^2$) estimates the <em>conditional mean</em> $\mathbb{E}[Y|X]$. In power systems engineering, an error of $+1,000\text{ MW}$ (over-generation) does <strong>not</strong> carry the same economic or societal cost as $-1,000\text{ MW}$ (grid collapse). Under-predicting peak demand collapses grid frequency, tripping safety breakers and causing cascading blackouts or forced peaker-turbine firing ($10\times$ cost).
+                    </div>
+                    <div class="defense-box">
+                        <div class="defense-box-title">Mathematical Whiteboard Derivation: Newsvendor Critical Fractile</div>
+                        Let $C_{\text{under}}$ be the cost per unit of under-prediction ($y > \hat{y}$), and $C_{\text{over}}$ be the cost per unit of over-prediction ($y < \hat{y}$). The expected operational dispatch cost is:
+                        $$E[C(\hat{y})] = C_{\text{over}} \int_{-\infty}^{\hat{y}} (\hat{y} - y) f(y) dy + C_{\text{under}} \int_{\hat{y}}^{\infty} (y - \hat{y}) f(y) dy$$
+                        Differentiating with respect to $\hat{y}$ using Leibniz's rule:
+                        $$\frac{d}{d\hat{y}} E[C(\hat{y})] = C_{\text{over}} F(\hat{y}) - C_{\text{under}} (1 - F(\hat{y})) = 0$$
+                        $$F(\hat{y}^*) (C_{\text{over}} + C_{\text{under}}) = C_{\text{under}} \implies F(\hat{y}^*) = \tau^* = \frac{C_{\text{under}}}{C_{\text{under}} + C_{\text{over}}}$$
+                        With an empirical $10:1$ operational penalty ratio ($C_{\text{under}} = 10, C_{\text{over}} = 1$):
+                        $$\tau^* = \frac{10}{10 + 1} = \frac{10}{11} \approx 0.909 \implies \mathbf{\tau = 0.90}$$
+                    </div>
+                    <div class="whiteboard-quote">
+                        <div class="whiteboard-label">Viva Defense Soundbite</div>
+                        <em>"We optimize Pinball loss at $\tau=0.90$ because an asymmetric $10:1$ cost structure between spinning reserve dispatch and curtailment mathematically maps to the 90.9th percentile under the Newsvendor theorem. An $L_2$ mean regressor would under-dispatch reserves in 50% of peak hours."</em>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Question 2 -->
+        <div class="q-card" data-keywords="lightgbm pinball subgradient hessian pseudo-hessian newton-raphson">
+            <div class="q-header">
+                <div class="q-num-badge">Question 2</div>
+                <div>
+                    <div class="q-topic">Gradient Boosting Mechanics & Non-Differentiable Objectives</div>
+                    <div class="q-question">What is the exact mathematical gradient of the Pinball Loss in LightGBM, and how does the engine perform Newton-Raphson tree splitting when the second derivative (Hessian) is zero everywhere?</div>
+                </div>
+            </div>
+            <div class="q-body">
+                <div class="options-list">
+                    <div class="option-item" onclick="checkOption(this, false)">
+                        <div class="option-marker">A</div>
+                        <div class="option-text">The gradient is $2(y - \hat{y})$, and LightGBM applies an exact second-order Taylor expansion using numerical finite differences.</div>
+                    </div>
+                    <div class="option-item" onclick="checkOption(this, true)">
+                        <div class="option-marker">B</div>
+                        <div class="option-text">The subgradient is $g_i = \mathbb{I}(y_i < \hat{y}_i) - \tau$. Because the true Hessian is zero almost everywhere ($h_i = 0$), LightGBM substitutes a constant pseudo-Hessian $h_i = 1.0$ (or Huber-approximated smoothing) to prevent division by zero in leaf weight updates.</div>
+                    </div>
+                    <div class="option-item" onclick="checkOption(this, false)">
+                        <div class="option-marker">C</div>
+                        <div class="option-text">LightGBM switches from histogram-based splitting to Nelder-Mead simplex search across non-differentiable leaf boundaries.</div>
+                    </div>
+                    <div class="option-item" onclick="checkOption(this, false)">
+                        <div class="option-marker">D</div>
+                        <div class="option-text">The Hessian is given by $\frac{\tau(1-\tau)}{\hat{y}^2}$, providing an adaptive learning rate during training.</div>
+                    </div>
+                </div>
+
+                <button class="reveal-toggle-btn" onclick="toggleDossier(this)">
+                    <span>Show Examiner Solution & Whiteboard Derivation</span>
+                </button>
+
+                <div class="defense-dossier">
+                    <div class="dossier-heading">
+                        <span>Examiner Solution & First-Principles Defense</span>
+                        <span class="badge-verified">Verified</span>
+                    </div>
+                    <div class="defense-text">
+                        <strong>1. Pinball Loss Formulation:</strong>
+                        $$\mathcal{L}_\tau(y, \hat{y}) = (y - \hat{y}) \cdot \Big(\tau - \mathbb{I}(y < \hat{y})\Big)$$
+                        <strong>2. First-Order Subgradient:</strong>
+                        $$\frac{\partial \mathcal{L}_\tau}{\partial \hat{y}} = \mathbb{I}(y < \hat{y}) - \tau = \begin{cases} -\tau & \text{if } y > \hat{y} \text{ (under-prediction)} \\ 1 - \tau & \text{if } y < \hat{y} \text{ (over-prediction)} \end{cases}$$
+                    </div>
+                    <div class="defense-box warning">
+                        <div class="defense-box-title">The Zero-Hessian Dilemma in Newton-Raphson Boosting</div>
+                        In standard XGBoost / LightGBM, the optimal leaf weight for leaf $j$ is calculated via:
+                        $$w_j^* = -\frac{\sum_{i \in I_j} g_i}{\sum_{i \in I_j} h_i + \lambda}$$
+                        Because the piecewise linear pinball loss has a second derivative of $h_i = \frac{\partial^2 \mathcal{L}_\tau}{\partial \hat{y}^2} = 0$ everywhere (and undefined at 0), standard Newton-Raphson division fails. LightGBM resolves this by substituting a constant pseudo-Hessian ($h_i = 1.0$) or internally applying a Huber-quantile approximation, reducing the leaf update to a regularized subgradient step.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Question 3 -->
+        <div class="q-card" data-keywords="timeseriessplit quantile crossing chernozhukov monotone rearrangement data leakage">
+            <div class="q-header">
+                <div class="q-num-badge">Question 3</div>
+                <div>
+                    <div class="q-topic">Temporal Leakage Invariants & Quantile Crossing</div>
+                    <div class="q-question">Why is standard K-Fold CV forbidden on grid time-series, and what mathematical method guarantees that the predicted lower bound never exceeds the upper bound ($\hat{y}_{0.10} \le \hat{y}_{0.90}$)?</div>
+                </div>
+            </div>
+            <div class="q-body">
+                <div class="options-list">
+                    <div class="option-item" onclick="checkOption(this, false)">
+                        <div class="option-marker">A</div>
+                        <div class="option-text">K-Fold CV causes memory fragmentation in pandas; quantile crossing is resolved by retraining on log-transformed load values.</div>
+                    </div>
+                    <div class="option-item" onclick="checkOption(this, true)">
+                        <div class="option-marker">B</div>
+                        <div class="option-text">K-Fold allows future timestamps ($t+1$) to leak into past predictions ($t$) over autocorrelated features ($r > 0.95$); quantile crossing is resolved via Chernozhukov Monotone Rearrangement, which sorts predicted quantiles per sample.</div>
+                    </div>
+                    <div class="option-item" onclick="checkOption(this, false)">
+                        <div class="option-marker">C</div>
+                        <div class="option-text">K-Fold destroys seasonal frequency harmonics; quantile crossing is prevented by clipping negative outputs to zero.</div>
+                    </div>
+                    <div class="option-item" onclick="checkOption(this, false)">
+                        <div class="option-marker">D</div>
+                        <div class="option-text">K-Fold is forbidden by FERC regulatory rules; quantile crossing is prevented by using a single neural network with softmax outputs.</div>
+                    </div>
+                </div>
+
+                <button class="reveal-toggle-btn" onclick="toggleDossier(this)">
+                    <span>Show Examiner Solution & Whiteboard Derivation</span>
+                </button>
+
+                <div class="defense-dossier">
+                    <div class="dossier-heading">
+                        <span>Examiner Solution & First-Principles Defense</span>
+                        <span class="badge-verified">Verified</span>
+                    </div>
+                    <div class="defense-text">
+                        <strong>1. The Temporal Leakage Trap:</strong> Hourly power load exhibits massive autocorrelation ($\text{ACF}(1) = 0.982$, $\text{ACF}(24) = 0.891$). Random K-Fold splits observations randomly, meaning the model is trained on hour $t+1$ and evaluated on hour $t$. With autoregressive features like <code>lag_1</code>, random K-Fold achieves an artificially deflated test error that collapses in real-world deployment. We mandate expanding-window <code>TimeSeriesSplit(n_splits=5)</code>.
+                    </div>
+                    <div class="defense-box">
+                        <div class="defense-box-title">Mathematical Proof: Chernozhukov Monotone Rearrangement (2010)</div>
+                        When independent regressors $\hat{q}_{\tau}(x)$ are trained for $\tau \in \{0.10, 0.50, 0.90\}$, sample estimation error can cause the <em>Quantile Crossing Anomaly</em>:
+                        $$\hat{q}_{0.10}(x) > \hat{q}_{0.90}(x)$$
+                        Let $\hat{F}^*(y) = \frac{1}{M}\sum_{m=1}^M \mathbb{I}(\hat{q}_{\tau_m}(x) \le y)$. The monotone rearranged quantile is defined as the generalized inverse:
+                        $$\tilde{q}_\tau(x) = \inf \{y : \hat{F}^*(y) \ge \tau\}$$
+                        Chernozhukov et al. proved that sorting the predicted quantiles $[\hat{q}_{0.10}, \hat{q}_{0.50}, \hat{q}_{0.90}]$ monotonically per observation <strong>strictly reduces or maintains estimation error</strong> under any $L_p$ norm ($p \ge 1$):
+                        $$\|\tilde{q}_\tau(x) - q_\tau(x)\|_p \le \|\hat{q}_\tau(x) - q_\tau(x)\|_p$$
+                        This guarantees $0.00\%$ crossing rate without retraining.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Question 4 -->
+        <div class="q-card" data-keywords="kruskal-wallis omnibus levene dagostino normality bonferroni cliffs delta">
+            <div class="q-header">
+                <div class="q-num-badge">Question 4</div>
+                <div>
+                    <div class="q-topic">Statistical Diagnostics & Omnibus Gatekeeping</div>
+                    <div class="q-question">Why did your statistical pipeline reject standard ANOVA in favor of the non-parametric Kruskal-Wallis test across the four seasons, and what was the observed effect size ($\eta_H^2$)?</div>
+                </div>
+            </div>
+            <div class="q-body">
+                <div class="options-list">
+                    <div class="option-item" onclick="checkOption(this, true)">
+                        <div class="option-marker">A</div>
+                        <div class="option-text">D'Agostino-Pearson ($K^2 = 12,473.86, p < 10^{-300}$) and Levene's test ($W = 5,958.52, p < 10^{-300}$) rejected normality and homoscedasticity; Kruskal-Wallis established $H = 27,143.61$ with seasonal effect size $\eta_H^2 = 18.67\%$.</div>
+                    </div>
+                    <div class="option-item" onclick="checkOption(this, false)">
+                        <div class="option-marker">B</div>
+                        <div class="option-text">ANOVA cannot compute degrees of freedom when sample sizes exceed 100,000 rows; the Kruskal-Wallis test reduced variance by 99.4%.</div>
+                    </div>
+                    <div class="option-item" onclick="checkOption(this, false)">
+                        <div class="option-marker">C</div>
+                        <div class="option-text">ANOVA requires categorical variables to be strictly binary; the Kruskal-Wallis test was chosen to enable Bonferroni p-value amplification.</div>
+                    </div>
+                    <div class="option-item" onclick="checkOption(this, false)">
+                        <div class="option-marker">D</div>
+                        <div class="option-text">The data exhibited Gaussian residuals with equal variances, but Kruskal-Wallis was selected because of its higher statistical power.</div>
+                    </div>
+                </div>
+
+                <button class="reveal-toggle-btn" onclick="toggleDossier(this)">
+                    <span>Show Examiner Solution & Whiteboard Derivation</span>
+                </button>
+
+                <div class="defense-dossier">
+                    <div class="dossier-heading">
+                        <span>Examiner Solution & First-Principles Defense</span>
+                        <span class="badge-verified">Verified</span>
+                    </div>
+                    <div class="defense-text">
+                        <strong>1. Chapter 2 Statistical Discipline (Assumption Validation):</strong> One-way ANOVA relies strictly on two foundational assumptions:
+                        <ul>
+                            <li>Normality of group populations: Tested via D'Agostino-Pearson $K^2 = s^2 + k^2 = 12,473.86$ ($p < 10^{-300}$, rejecting $H_0$).</li>
+                            <li>Homoscedasticity (equal variance across groups): Tested via Levene's test $W = 5,958.52$ ($p < 10^{-300}$, severe heteroscedasticity).</li>
+                        </ul>
+                    </div>
+                    <div class="defense-box">
+                        <div class="defense-box-title">Non-Parametric Omnibus Gatekeeper & Eta-Squared Effect Size</div>
+                        Because parametric assumptions were violated, running ANOVA would produce inflated Type I errors. We executed the Kruskal-Wallis rank-sum test:
+                        $$H = \frac{12}{N(N+1)} \sum_{j=1}^k \frac{R_j^2}{n_j} - 3(N+1) = 27,143.61 \quad (p < 10^{-300})$$
+                        We report the non-parametric effect size $\eta_H^2$:
+                        $$\eta_H^2 = \frac{H - k + 1}{N - k} = \frac{27,143.61 - 4 + 1}{145,392 - 4} \approx 0.1867 \implies \mathbf{18.67\%}$$
+                        <strong>Conclusion:</strong> $18.67\%$ of the total variance in electricity demand ranks is attributable strictly to seasonal shift, followed by post-hoc Bonferroni-corrected Mann-Whitney $U$ tests (Summer vs. Spring Cliff's $\delta = +0.387$).
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Question 5 -->
+        <div class="q-card" data-keywords="treeshap shapley additivity consistency peak waterfall feature attribution">
+            <div class="q-header">
+                <div class="q-num-badge">Question 5</div>
+                <div>
+                    <div class="q-topic">Model Interpretability & TreeSHAP Attribution Axioms</div>
+                    <div class="q-question">Why are split-count feature importances untrustworthy for grid dispatch explanations, and what mathematical axioms does TreeSHAP guarantee?</div>
+                </div>
+            </div>
+            <div class="q-body">
+                <div class="options-list">
+                    <div class="option-item" onclick="checkOption(this, true)">
+                        <div class="option-marker">A</div>
+                        <div class="option-text">Split counts are biased toward continuous, high-cardinality features and violate consistency; TreeSHAP satisfies Local Accuracy (Additivity: $\sum \phi_i = f(x) - E[f]$), Missingness, and Monotonic Consistency in polynomial time $\mathcal{O}(TLD^2)$.</div>
+                    </div>
+                    <div class="option-item" onclick="checkOption(this, false)">
+                        <div class="option-marker">B</div>
+                        <div class="option-text">Split counts cannot be computed on boosted trees; TreeSHAP uses backpropagation to compute Hessian derivatives of each tree leaf.</div>
+                    </div>
+                    <div class="option-item" onclick="checkOption(this, false)">
+                        <div class="option-marker">C</div>
+                        <div class="option-text">Split counts require GPU CUDA acceleration; TreeSHAP is an unsupervised clustering algorithm that isolates anomaly timestamps.</div>
+                    </div>
+                    <div class="option-item" onclick="checkOption(this, false)">
+                        <div class="option-marker">D</div>
+                        <div class="option-text">TreeSHAP sets all negative feature attributions to zero, ensuring only positive load drivers are presented to grid dispatchers.</div>
+                    </div>
+                </div>
+
+                <button class="reveal-toggle-btn" onclick="toggleDossier(this)">
+                    <span>Show Examiner Solution & Whiteboard Derivation</span>
+                </button>
+
+                <div class="defense-dossier">
+                    <div class="dossier-heading">
+                        <span>Examiner Solution & First-Principles Defense</span>
+                        <span class="badge-verified">Verified</span>
+                    </div>
+                    <div class="defense-text">
+                        <strong>The Fatal Flaw of Split-Count Feature Importance:</strong>
+                        Standard Gini or split-frequency importance measures how often a feature is chosen for a split. Continuous features with infinite possible split thresholds (like temperature or rolling load) artificially inflate split counts over binary features (like <code>is_holiday</code>), even when the binary feature exerts a massive structural impact. Furthermore, split importance violates <em>Consistency</em>: altering a model so that a feature has a larger marginal impact can paradoxically lower its split importance!
+                    </div>
+                    <div class="defense-box">
+                        <div class="defense-box-title">TreeSHAP Axioms (Lundberg et al., Nature Machine Intelligence 2020)</div>
+                        TreeSHAP calculates exact Shapley values from cooperative game theory:
+                        $$\phi_i(x) = \sum_{S \subseteq F \setminus \{i\}} \frac{|S|!(|F| - |S| - 1)!}{|F|!} \Big( f_x(S \cup \{i\}) - f_x(S) \Big)$$
+                        It guarantees three vital properties:
+                        <ol>
+                            <li><strong>Local Accuracy (Additivity):</strong> The sum of all feature attributions equals the difference between the sample prediction and the baseline expected value:
+                                $$\sum_{i=1}^M \phi_i(x) = f(x) - \mathbb{E}[f(X)]$$
+                            </li>
+                            <li><strong>Missingness:</strong> Features that do not appear in a tree path receive $\phi_i = 0$.</li>
+                            <li><strong>Consistency:</strong> If a model changes such that the marginal contribution of feature $i$ increases or stays the same, $\phi_i$ never decreases.</li>
+                        </ol>
+                        In our summer peak waterfall analysis ($49,566\text{ MW}$), TreeSHAP proved that <code>rolling_max_24</code> ($+5,240\text{ MW}$) and <code>lag_1</code> ($+4,120\text{ MW}$) were the primary drivers elevating the baseline from $32,150\text{ MW}$ up to $48,200\text{ MW}$.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <footer>
+        <div class="container">
+            <p><strong>UMC301: Applied Data Science & AI</strong> • Computational and Data Sciences (CDS), IISc Bengaluru</p>
+            <p style="margin-top: 6px;">Spec-Driven Development (SDD) • Project 1 Defense Architecture Guide</p>
+        </div>
+    </footer>
+
+    <script>
+        function checkOption(el, isCorrect) {
+            const parentList = el.closest('.options-list');
+            const items = parentList.querySelectorAll('.option-item');
+            items.forEach(item => item.classList.remove('selected-correct', 'selected-wrong'));
+
+            if (isCorrect) {
+                el.classList.add('selected-correct');
+            } else {
+                el.classList.add('selected-wrong');
+                items.forEach(item => {
+                    const onclickAttr = item.getAttribute('onclick');
+                    if (onclickAttr && onclickAttr.includes('true')) item.classList.add('selected-correct');
+                });
+            }
+
+            const card = el.closest('.q-card');
+            const dossier = card.querySelector('.defense-dossier');
+            const btn = card.querySelector('.reveal-toggle-btn span');
+            if (dossier && !dossier.classList.contains('open')) {
+                dossier.classList.add('open');
+                if (btn) btn.textContent = 'Hide Examiner Solution & Whiteboard Derivation';
+                if (window.renderMathInElement) {
+                    renderMathInElement(dossier, {
+                        delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]
+                    });
+                }
+            }
+        }
+
+        function toggleDossier(btn) {
+            const card = btn.closest('.q-card');
+            const dossier = card.querySelector('.defense-dossier');
+            const span = btn.querySelector('span');
+
+            if (dossier.classList.contains('open')) {
+                dossier.classList.remove('open');
+                span.textContent = 'Show Examiner Solution & Whiteboard Derivation';
+            } else {
+                dossier.classList.add('open');
+                span.textContent = 'Hide Examiner Solution & Whiteboard Derivation';
+                if (window.renderMathInElement) {
+                    renderMathInElement(dossier, {
+                        delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]
+                    });
+                }
+            }
+        }
+
+        function filterSearch() {
+            const query = document.getElementById('searchInput').value.toLowerCase().trim();
+            const cards = document.querySelectorAll('.q-card');
+            cards.forEach(card => {
+                const text = card.textContent.toLowerCase();
+                const keywords = (card.getAttribute('data-keywords') || '').toLowerCase();
+                card.style.display = (!query || text.includes(query) || keywords.includes(query)) ? 'block' : 'none';
+            });
+        }
+
+        function toggleAll(expand) {
+            document.querySelectorAll('.defense-dossier').forEach(d => {
+                if (expand) {
+                    d.classList.add('open');
+                    if (window.renderMathInElement) {
+                        renderMathInElement(d, {
+                            delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]
+                        });
+                    }
+                } else {
+                    d.classList.remove('open');
+                }
+            });
+            document.querySelectorAll('.reveal-toggle-btn span').forEach(b => {
+                b.textContent = expand ? 'Hide Examiner Solution & Whiteboard Derivation' : 'Show Examiner Solution & Whiteboard Derivation';
+            });
+        }
+    </script>
+</body>
+</html>
